@@ -1,46 +1,86 @@
---create table course
-
-create table if not exists course (
-	id BIGSERIAL primary key not null,
-	name varchar(50) not null,
-	price float not null,
-	detail text,
-	teacher_id int not null,
-	active bit,
-	created_at TIMESTAMP with TIME zone default CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP with TIME zone default CURRENT_TIMESTAMP,
-	foreign key (teacher_id) references teacher(id)
+-- Tạo bảng departments
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    active BOOLEAN DEFAULT true
 );
 
-create table if not exists teacher(
-	id BiGSERIAL primary key not null,
-	name varchar(50) not null,
-	bio text null,
-	created_at TIMESTAMP with TIME zone default CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP with TIME zone default CURRENT_TIMESTAMP
+-- Tạo bảng employees
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary NUMERIC(12,2) NOT NULL,
+    department_id INTEGER,
+    active BOOLEAN DEFAULT true,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
 );
 
-select * from course c 
+-- Thêm dữ liệu vào bảng departments
+INSERT INTO departments (name) VALUES
+    ('Phòng Kỹ thuật'),
+    ('Phòng Nhân sự'),
+    ('Phòng Kế toán'),
+    ('Phòng Marketing'),
+    ('Phòng Kinh doanh');
 
-select * from teacher 
+-- Thêm dữ liệu vào bảng employees
+INSERT INTO employees (name, salary, department_id) VALUES
+    ('Nguyễn Văn A', 15000000, 1),
+    ('Trần Thị B', 12000000, 2),
+    ('Lê Văn C', 9000000, 3),
+    ('Phạm Thị D', 11000000, 4),
+    ('Hoàng Văn E', 13000000, 5),
+    ('Đỗ Thị F', 8500000, 1),
+    ('Bùi Văn G', 10500000, 2),
+    ('Ngô Thị H', 9500000, 3),
+    ('Vũ Văn I', 14000000, 4),
+    ('Đặng Thị K', 12500000, 5);
 
-create or replace procedure rename_column(new_name varchar, column_name varchar, table_name varchar)
-language plpgsql
-as $$
-begin
-	if column_name = '' or new_name = '' or table_name = '' then 
-		raise exception 'must be fill all field';
-	else
-		execute format('ALTER TABLE %I RENAME COLUMN %I to %I', table_name, column_name, new_name);
-		execute format('ALTER TABLE %I ALTER COLUMN %I SET NOT NULL', table_name, new_name);
-	end if;
-end;
-$$;
+-- 1. Lấy danh sách nhân viên và phòng ban của họ
+SELECT 
+    e.id, 
+    e.name as employee_name, 
+    e.salary, 
+    d.name as department_name
+FROM employees e
+INNER JOIN departments d ON e.department_id = d.id
+WHERE e.active = true AND d.active = true;
 
--- call the procedure
-call rename_column('content', 'hehe', 'course');
+-- 2. Tìm nhân viên có lương lớn hơn 10 triệu
+SELECT 
+    id, 
+    name, 
+    salary::money, 
+    department_id
+FROM employees
+WHERE salary > 10000000 AND active = true;
 
+-- 3. Đếm số nhân viên trong mỗi phòng ban
+SELECT 
+    d.name as department_name, 
+    COUNT(e.id) as employee_count
+FROM departments d
+LEFT JOIN employees e ON d.id = e.department_id
+    AND e.active = true
+WHERE d.active = true
+GROUP BY d.id, d.name;
 
+-- 4. Cập nhật lương của một nhân viên cụ thể
+UPDATE employees
+SET salary = 16000000
+WHERE id = 1
+RETURNING id, name, salary::money;
 
+-- 5. Xóa một phòng ban (cập nhật active thành false)
 
+-- Đánh dấu phòng ban là không active
+UPDATE departments
+SET active = false
+WHERE id = 1
+RETURNING id, name;
 
+-- Đánh dấu các nhân viên thuộc phòng ban đó là không active
+UPDATE employees
+SET active = false
+WHERE department_id = 1
+RETURNING id, name;
